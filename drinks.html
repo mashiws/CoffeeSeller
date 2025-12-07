@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <title>Напої</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1100px;
+      margin: 20px auto;
+    }
+    h1 { text-align: center; }
+
+    #drink-form {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      font-size: 14px;
+    }
+
+    input, select {
+      padding: 5px 8px;
+      font-size: 14px;
+    }
+
+    button {
+      padding: 7px 14px;
+      cursor: pointer;
+      white-space: nowrap;
+      height: 38px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 10px;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px 8px;
+      text-align: left;
+    }
+
+    th {
+      background: #f0f0f0;
+    }
+
+    .delete-btn {
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+
+    /* Перемикач режиму підрахунків */
+    #summary-mode {
+      font-size: 13px;
+      margin: 10px 0 5px 0;
+    }
+    #summary-mode label {
+      font-weight: normal;
+      margin-right: 15px;
+      flex-direction: row;
+      align-items: center;
+      gap: 4px;
+      display: inline-flex;
+    }
+
+    /* Вибір дати звіту */
+    #summary-date {
+      font-size: 13px;
+      margin: 0 0 5px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    #summary-date input[type="date"] {
+      padding: 3px 6px;
+      font-size: 13px;
+    }
+    #summary-date button {
+      height: auto;
+      padding: 4px 10px;
+      font-size: 12px;
+    }
+
+    /* ===== МОДАЛЬНЕ ВІКНО ===== */
+    .modal-bg {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal {
+      background: white;
+      padding: 20px;
+      width: 480px;
+      border-radius: 8px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.4);
+    }
+
+    .modal h2 {
+      margin-top: 0;
+      font-size: 20px;
+      text-align: center;
+      margin-bottom: 15px;
+    }
+
+    .modal h3 {
+      margin: 12px 0 4px;
+    }
+
+    .modal-list {
+      max-height: 150px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 5px;
+      margin-bottom: 10px;
+    }
+
+    .modal-list div {
+      display: flex;
+      justify-content: space-between;
+      gap: 5px;
+      padding: 4px 0;
+      align-items: center;
+    }
+
+    .modal-list input {
+      flex: 1;
+      padding: 3px 6px;
+      font-size: 13px;
+    }
+
+    .modal-buttons {
+      margin-top: 15px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .price-editor {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      margin-bottom: 5px;
+      align-items: center;
+    }
+
+    .price-editor select,
+    .price-editor input {
+      padding: 3px 6px;
+      font-size: 13px;
+    }
+
+    /* Зведення */
+    #summary {
+      font-size: 15px;
+      margin-top: 5px;
+      padding: 10px;
+      background: #fafafa;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+    }
+
+    #summary ul {
+      padding-left: 20px;
+      margin: 5px 0 15px 0;
+    }
+
+    /* Блок резервної копії */
+    #backup-block {
+      margin-top: 15px;
+      padding: 10px;
+      border: 1px dashed #bbb;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    #backup-block button {
+      height: auto;
+      padding: 4px 10px;
+      font-size: 12px;
+      margin-right: 8px;
+    }
+
+    #backup-block input[type="file"] {
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Замовлення напоїв</h1>
+
+<form id="drink-form">
+  <label>
+    Назва напою
+    <select id="drink-name"></select>
+  </label>
+
+  <label>
+    Розмір філіжанки
+    <select id="cup-size"></select>
+  </label>
+
+  <label>
+    Кількість
+    <input type="number" id="quantity" value="1" min="1">
+  </label>
+
+  <button type="submit">Додати</button>
+  <button type="button" id="clear-all">Очистити список</button>
+  <button type="button" id="edit-lists">Редагувати списки</button>
+</form>
+
+<table>
+  <thead>
+    <tr>
+      <th>Дата та час</th>
+      <th>Напій</th>
+      <th>Розмір</th>
+      <th>Кількість</th>
+      <th>Ціна за філіжанку</th>
+      <th>Сума</th>
+      <th>Дії</th>
+    </tr>
+  </thead>
+  <tbody id="orders-body"></tbody>
+</table>
+
+<!-- Перемикач режиму підрахунку -->
+<div id="summary-mode">
+  Режим підрахунку:
+  <label>
+    <input type="radio" name="summaryMode" value="current" checked>
+    за поточними цінами
+  </label>
+  <label>
+    <input type="radio" name="summaryMode" value="historical">
+    за цінами на момент продажу
+  </label>
+</div>
+
+<!-- Вибір дати звіту -->
+<div id="summary-date">
+  Дата звіту:
+  <input type="date" id="report-date">
+  <button type="button" id="report-today">Сьогодні</button>
+</div>
+
+<!-- Блок із підсумком за обрану дату -->
+<div id="summary"></div>
+
+<!-- Блок резервної копії -->
+<div id="backup-block">
+  <div style="margin-bottom:5px;">Резервная копия данных:</div>
+  <button type="button" id="backup-save">Зберегти дані (файл)</button>
+  <label>
+    Завантажити дані з файлу:
+    <input type="file" id="backup-file" accept="application/json">
+  </label>
+</div>
+
+<!-- ================= MODAL (редагування списків) ================= -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <h2>Редагування списків</h2>
+
+    <h3>Напої:</h3>
+    <div class="modal-list" id="drink-list"></div>
+    <input type="text" id="new-drink" placeholder="Новий напій">
+    <button onclick="addToList('drink')">Додати напій</button>
+
+    <h3>Розміри філіжанок:</h3>
+    <div class="modal-list" id="size-list"></div>
+    <input type="text" id="new-size" placeholder="Новий розмір (наприклад, 250 мл)">
+    <button onclick="addToList('size')">Додати розмір</button>
+
+    <h3>Ціни (за одну філіжанку):</h3>
+    <div class="modal-list" id="price-list"></div>
+
+    <div class="price-editor">
+      <select id="price-drink"></select>
+      <select id="price-size"></select>
+      <input type="number" id="price-value" min="0" step="0.01" placeholder="Ціна">
+      <button type="button" onclick="addOrUpdatePrice()">Зберегти ціну</button>
+    </div>
+
+    <div class="modal-buttons">
+      <button onclick="closeModal()">Закрити</button>
+      <button onclick="saveLists()">Зберегти все</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const STORAGE_DRINKS = "drinkList";
+  const STORAGE_SIZES  = "sizeList";
+  const STORAGE_ORDERS = "drinkOrders";
+  const STORAGE_PRICES = "priceList";
+
+  const drinkSelect = document.getElementById('drink-name');
+  const sizeSelect  = document.getElementById('cup-size');
+
+  const modalBg      = document.getElementById('modal-bg');
+  const drinkListDiv = document.getElementById('drink-list');
+  const sizeListDiv  = document.getElementById('size-list');
+  const priceListDiv = document.getElementById('price-list');
+  const summaryDiv   = document.getElementById('summary');
+
+  const priceDrinkSelect = document.getElementById('price-drink');
+  const priceSizeSelect  = document.getElementById('price-size');
+  const priceValueInput  = document.getElementById('price-value');
+
+  const reportDateInput  = document.getElementById('report-date');
+  const reportTodayBtn   = document.getElementById('report-today');
+
+  const backupSaveBtn    = document.getElementById('backup-save');
+  const backupFileInput  = document.getElementById('backup-file');
+
+  let drinks = [];
+  let sizes  = [];
+  let prices = []; // {drink, size, price}
+  let orders = [];
+  let drinksBeforeEdit = [];
+  let summaryMode = 'current'; // 'current' | 'historical'
+
+  /* ===== ДОПОМОЖНІ ФУНКЦІЇ ДАТИ ===== */
+
+  function getTodayKey() {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    return `${dd}.${mm}.${yyyy}`;
+  }
+
+  function getTodayISO() {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function isoToKey(iso) {
+    if (!iso || !iso.includes('-')) return getTodayKey();
+    const [y, m, d] = iso.split('-');
+    return `${d}.${m}.${y}`;
+  }
+
+  function getDayFromDateString(dateStr) {
+    if (!dateStr) return "";
+    return dateStr.split(" ")[0] || "";
+  }
+
+  function getSelectedReportKey() {
+    const val = reportDateInput.value;
+    if (!val) return getTodayKey();
+    return isoToKey(val);
+  }
+
+  /* ================== LISTS ================== */
+
+  function loadLists() {
+    drinks = JSON.parse(localStorage.getItem(STORAGE_DRINKS) || '["Американо","Капучіно","Латте"]');
+    sizes  = JSON.parse(localStorage.getItem(STORAGE_SIZES)  || '["200 мл","250 мл","300 мл"]');
+    prices = JSON.parse(localStorage.getItem(STORAGE_PRICES) || "[]");
+  }
+
+  function saveLists() {
+    applyDrinkRenames(drinksBeforeEdit, drinks);
+
+    localStorage.setItem(STORAGE_DRINKS, JSON.stringify(drinks));
+    localStorage.setItem(STORAGE_SIZES,  JSON.stringify(sizes));
+    localStorage.setItem(STORAGE_PRICES, JSON.stringify(prices));
+
+    updateSelects();
+    renderOrders();
+    closeModal();
+  }
+
+  function updateSelects() {
+    drinkSelect.innerHTML = drinks.map(d => `<option>${d}</option>`).join("");
+    sizeSelect.innerHTML  = sizes.map(s => `<option>${s}</option>`).join("");
+
+    priceDrinkSelect.innerHTML = drinks.map(d => `<option>${d}</option>`).join("");
+    priceSizeSelect.innerHTML  = sizes.map(s => `<option>${s}</option>`).join("");
+  }
+
+  function openModal() {
+    drinksBeforeEdit = [...drinks];
+    renderModalLists();
+    modalBg.style.display = "flex";
+  }
+
+  function closeModal() {
+    modalBg.style.display = "none";
+  }
+
+  function renderModalLists() {
+    drinkListDiv.innerHTML = drinks
+      .map((d, i) => `
+        <div>
+          <input type="text" value="${d}" data-index="${i}" class="drink-edit-input">
+          <button onclick="removeFromList('drink',${i})">X</button>
+        </div>
+      `)
+      .join("");
+
+    sizeListDiv.innerHTML = sizes
+      .map((s, i) => `
+        <div>
+          <span>${s}</span>
+          <button onclick="removeFromList('size',${i})">X</button>
+        </div>
+      `)
+      .join("");
+
+    priceListDiv.innerHTML = prices
+      .map((p, i) => `
+        <div>
+          <span>${p.drink} — ${p.size}: ${p.price}</span>
+          <button onclick="removePrice(${i})">X</button>
+        </div>
+      `)
+      .join("");
+  }
+
+  function addToList(type) {
+    if (type === "drink") {
+      const val = document.getElementById('new-drink').value.trim();
+      if (val) drinks.push(val);
+      document.getElementById('new-drink').value = "";
+    } else {
+      const val = document.getElementById('new-size').value.trim();
+      if (val) sizes.push(val);
+      document.getElementById('new-size').value = "";
+    }
+    renderModalLists();
+    updateSelects();
+  }
+
+  // 🔒 НЕ МОЖНА ВИДАЛИТИ, ЯКЩО ВИКОРИСТОВУЄТЬСЯ У ЗАПИСАХ
+  function removeFromList(type, index) {
+    if (type === "drink") {
+      const removedName = drinks[index];
+      const used = orders.some(o => o.name === removedName);
+      if (used) {
+        alert("Не можна видалити напій, який вже використовується у записах.");
+        return;
+      }
+      drinks.splice(index, 1);
+      prices = prices.filter(p => p.drink !== removedName);
+    } else {
+      const removedSize = sizes[index];
+      const used = orders.some(o => o.size === removedSize);
+      if (used) {
+        alert("Не можна видалити розмір філіжанки, який вже використовується у записах.");
+        return;
+      }
+      sizes.splice(index, 1);
+      prices = prices.filter(p => p.size !== removedSize);
+    }
+    renderModalLists();
+    updateSelects();
+  }
+
+  // 🔒 НЕ МОЖНА ЗАЛИШИТИ ПОРОЖНІ НАЗВА НАПОЇ
+  drinkListDiv.addEventListener('input', (e) => {
+    if (!e.target.classList.contains('drink-edit-input')) return;
+    const idx = Number(e.target.dataset.index);
+    if (Number.isNaN(idx)) return;
+
+    const newValTrimmed = e.target.value.trim();
+
+    if (newValTrimmed === "") {
+      alert("Назва напою не може бути порожньою.");
+      // повернути візуально старе значення з масиву
+      e.target.value = drinks[idx] ?? "";
+      return;
+    }
+
+    // записуємо нове значення, якщо воно не порожнє
+    drinks[idx] = e.target.value;
+  });
+
+  /* ===== ЦІНИ ===== */
+
+  function addOrUpdatePrice() {
+    const drink = priceDrinkSelect.value;
+    const size  = priceSizeSelect.value;
+    const val   = parseFloat(String(priceValueInput.value).replace(',', '.'));
+
+    if (!drink || !size || isNaN(val) || val < 0) {
+      alert("Вкажіть коректну ціну.");
+      return;
+    }
+
+    const existing = prices.find(p => p.drink === drink && p.size === size);
+    if (existing) existing.price = val;
+    else prices.push({ drink, size, price: val });
+
+    priceValueInput.value = "";
+    renderModalLists();
+  }
+
+  function removePrice(i) {
+    prices.splice(i, 1);
+    renderModalLists();
+  }
+
+  function getPriceFor(drink, size) {
+    const p = prices.find(p => p.drink === drink && p.size === size);
+    return p ? p.price : null;
+  }
+
+  /* ================= ORDERS LOGIC ================= */
+
+  function loadOrders() {
+    orders = JSON.parse(localStorage.getItem(STORAGE_ORDERS) || "[]");
+    renderOrders();
+  }
+
+  function saveOrders() {
+    localStorage.setItem(STORAGE_ORDERS, JSON.stringify(orders));
+  }
+
+  function renderOrders() {
+    const tbody = document.getElementById('orders-body');
+    tbody.innerHTML = orders.map((o, i) => {
+      const qty   = Number(o.q ?? o.quantity ?? 0) || 0;
+
+      // Для таблиці: якщо є збережена ціна - беремо її, інакше беремо поточну
+      let price = Number(o.price ?? 0);
+      if (!price) {
+        const p = getPriceFor(o.name, o.size);
+        price = p ? Number(p) : 0;
+      }
+
+      const total = price * qty;
+
+      return `
+        <tr>
+          <td>${o.date || ""}</td>
+          <td>${o.name || ""}</td>
+          <td>${o.size || ""}</td>
+          <td>${qty}</td>
+          <td>${price.toFixed(2)}</td>
+          <td>${total.toFixed(2)}</td>
+          <td><button class="delete-btn" onclick="delOrder(${i})">Видалити</button></td>
+        </tr>
+      `;
+    }).join("");
+    renderSummary();
+  }
+
+  function delOrder(i) {
+    orders.splice(i, 1);
+    saveOrders();
+    renderOrders();
+  }
+
+  function addOrder(event) {
+    event.preventDefault();
+    const name = drinkSelect.value;
+    const size = sizeSelect.value;
+    const q = parseInt(document.getElementById('quantity').value, 10);
+    if (!q || q <= 0) return;
+
+    const price = getPriceFor(name, size);
+    if (price === null) {
+      alert("Для цієї комбінації не встановлено ціни. Задайте її у редакторі списків.");
+      return;
+    }
+
+    const now = new Date();
+    const today = getTodayKey();
+    const dt = today + " " + now.toLocaleTimeString();
+
+    // Зберігаємо ціну на момент продажу (для історичного режиму)
+    orders.unshift({ date: dt, day: today, name, size, q, price });
+    saveOrders();
+    renderOrders();
+  }
+
+  function clearAll() {
+    if (!confirm("Очистити весь список?")) return;
+    orders = [];
+    saveOrders();
+    renderOrders();
+  }
+
+  /* ===== Перейменування напоїв ===== */
+
+  function applyDrinkRenames(oldList, newList) {
+    const renameMap = {};
+    const len = Math.min(oldList.length, newList.length);
+
+    for (let i = 0; i < len; i++) {
+      const oldName = oldList[i];
+      const newName = newList[i];
+      if (oldName !== newName) renameMap[oldName] = newName;
+    }
+
+    if (Object.keys(renameMap).length === 0) return;
+
+    orders = orders.map(o => {
+      if (renameMap[o.name]) o.name = renameMap[o.name];
+      return o;
+    });
+
+    prices = prices.map(p => {
+      if (renameMap[p.drink]) p.drink = renameMap[p.drink];
+      return p;
+    });
+
+    saveOrders();
+    localStorage.setItem(STORAGE_PRICES, JSON.stringify(prices));
+  }
+
+  /* ============== ЗВЕДЕННЯ ЗА ОБРАНУ ДАТУ ============== */
+
+  function renderSummary() {
+    const dayKey = getSelectedReportKey(); // DD.MM.YYYY
+
+    const combos = {}; // key -> {qty, sum}
+
+    orders.forEach(o => {
+      const day = o.day || getDayFromDateString(o.date);
+      if (day !== dayKey) return;
+
+      const name = o.name || "—";
+      const size = o.size || "—";
+      const qty  = Number(o.q ?? 0) || 0;
+      if (!qty) return;
+
+      let price = 0;
+
+      if (summaryMode === 'historical') {
+        // Беремо ціну із замовлення (історична)
+        price = Number(o.price ?? 0) || 0;
+        if (!price) {
+          const pObj = prices.find(p => p.drink === name && p.size === size);
+          if (pObj) price = Number(pObj.price) || 0;
+        }
+      } else {
+        // Беремо ціну із актуального списку цін
+        const pObj = prices.find(p => p.drink === name && p.size === size);
+        price = pObj ? Number(pObj.price) || 0 : 0;
+      }
+
+      const key = name + " | " + size;
+
+      if (!combos[key]) combos[key] = { qty: 0, sum: 0 };
+
+      combos[key].qty += qty;
+      combos[key].sum += qty * price;
+    });
+
+    const keys = Object.keys(combos);
+    if (keys.length === 0) {
+      summaryDiv.textContent = `За вибрану дату (${dayKey}) ще немає записів.`;
+      return;
+    }
+
+    const modeText =
+      summaryMode === 'current'
+        ? 'за ПОТОЧНИМИ цінами'
+        : 'за цінами на момент продажу';
+
+    let totalMoney = 0;
+
+    let html = `<strong>Разом за ${dayKey} (${modeText}):</strong><ul>`;
+
+    for (const key of keys) {
+      const [name, size] = key.split(" | ");
+      const { qty, sum } = combos[key];
+      totalMoney += sum;
+
+      html += `<li>${name} — ${size}: ${qty} шт = ${sum.toFixed(2)}</li>`;
+    }
+
+    html += `</ul><strong>Загальна сума: ${totalMoney.toFixed(2)}</strong>`;
+    summaryDiv.innerHTML = html;
+  }
+
+  /* ============== РЕЗЕРВНА КОПІЯ (ЕКСПОРТ/ІМПОРТ) ============== */
+
+  function exportData() {
+    const data = {
+      drinks,
+      sizes,
+      prices,
+      orders,
+    };
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url  = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "coffee-data-backup.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+
+        if (!data || typeof data !== "object") {
+          throw new Error("Bad format");
+        }
+
+        if (Array.isArray(data.drinks)) drinks = data.drinks;
+        if (Array.isArray(data.sizes))  sizes  = data.sizes;
+        if (Array.isArray(data.prices)) prices = data.prices;
+        if (Array.isArray(data.orders)) orders = data.orders;
+
+        localStorage.setItem(STORAGE_DRINKS, JSON.stringify(drinks));
+        localStorage.setItem(STORAGE_SIZES,  JSON.stringify(sizes));
+        localStorage.setItem(STORAGE_PRICES, JSON.stringify(prices));
+        localStorage.setItem(STORAGE_ORDERS, JSON.stringify(orders));
+
+        updateSelects();
+        renderOrders();
+        alert("Дані успішно імпортовані.");
+      } catch (err) {
+        console.error(err);
+        alert("Неможливо імпортувати файл. Перевірте, що це правильний backup-файл.");
+      } finally {
+        event.target.value = "";
+      }
+    };
+    reader.readAsText(file, "utf-8");
+  }
+
+  /* ================= INIT ================= */
+  loadLists();
+  updateSelects();
+  loadOrders();
+
+  // встановити сьогоднішню дату у календарик
+  reportDateInput.value = getTodayISO();
+
+  // обробник перемикача режиму
+  document.querySelectorAll('input[name="summaryMode"]').forEach(input => {
+    input.addEventListener('change', () => {
+      summaryMode = input.value; // 'current' або 'historical'
+      renderSummary();
+    });
+  });
+
+  // зміна дати звіту
+  reportDateInput.addEventListener('change', () => {
+    renderSummary();
+  });
+
+  // кнопка "Сьогодні"
+  reportTodayBtn.addEventListener('click', () => {
+    reportDateInput.value = getTodayISO();
+    renderSummary();
+  });
+
+  // резервна копія - експорт / імпорт
+  backupSaveBtn.addEventListener('click', exportData);
+  backupFileInput.addEventListener('change', importData);
+
+  document.getElementById("drink-form").addEventListener("submit", addOrder);
+  document.getElementById("clear-all").addEventListener("click", clearAll);
+  document.getElementById("edit-lists").addEventListener("click", openModal);
+</script>
+
+</body>
+</html>
