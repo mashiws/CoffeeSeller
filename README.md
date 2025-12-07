@@ -1,12 +1,12 @@
 # CoffeeSeller
 Програмний код до дослідницької роботи на тему "LLM як можлива альтернатива програмісту". Сгенерован LLM на html/js виключно за допомогою промптів, вказаних у роботі.<br><br>
 
-Щоб запустити проєкт на гітхабі натисніть [тут](https://mashiws.github.io/CoffeeSeller/drinks.html)<br><br>
-Щоб подивитись звіт з аналізу безпеки натисніть [тут](https://mashiws.github.io/CoffeeSeller/addition/drinks-security-analysis.html)
+Щоб запустити проєкт на гітхабі натисніть [тут](https://mashiws.github.io/CoffeeSeller/drinks.html "Запустити програму") <a href="https://mashiws.github.io/CoffeeSeller/drinks.html" target="drinks_soft">тут</a><br><br>
+Щоб подивитись звіт з аналізу безпеки натисніть [тут](https://mashiws.github.io/CoffeeSeller/addition/drinks-security-analysis.html "Подивитись аналіз безпеки програми")
 
 ## Структура проєкту:
 drinks.html - головний файл проекту<br>
-coffee-data-backup.json - файл з даними до проекту
+coffee-data-backup.json - файл з даними до проекту<br>
 addition - додаткові матеріали до проєкту
 
 ## Як запустити проєкт локально на вашому компьютері:
